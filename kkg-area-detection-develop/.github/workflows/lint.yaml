@@ -1,0 +1,28 @@
+name: Lint with flake8
+
+on:
+  push:
+    branches:
+      - '**'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Python and dependencies
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install flake8 with pyproject support
+        run: pip install flake8[pyproject] flake8-commas flake8-isort flake8-quotes
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v41
+      - name: Run flake8
+        run: |
+          flake8 --version
+          echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep '\.py$' | xargs -r flake8 --count --show-source --statistics

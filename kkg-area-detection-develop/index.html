@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instance Segmentation Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .image-container {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            gap: 20px;
+        }
+        .image-box {
+            flex: 1;
+            text-align: center;
+        }
+        .image-box img {
+            max-width: 100%;
+            max-height: 500px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .upload-area {
+            border: 2px dashed #ccc;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .upload-area:hover {
+            border-color: #666;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        /* 必要に応じて表示領域を拡張できます */
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Instance Segmentation Demo</h1>
+
+        <!-- 画像アップロードエリア -->
+        <div class="upload-area" id="uploadArea">
+            <p>画像をドラッグ＆ドロップするか、クリックして選択してください</p>
+            <input type="file" id="fileInput" accept="image/*" style="display: none;">
+        </div>
+
+        <!-- 処理中の表示 -->
+        <div class="loading" id="loading">
+            <p>処理中...</p>
+        </div>
+
+        <!-- 入力画像＆出力画像表示エリア -->
+        <div class="image-container">
+            <div class="image-box">
+                <h3>入力画像</h3>
+                <img id="inputImage" src="" alt="入力画像" style="display: none;">
+            </div>
+            <div class="image-box">
+                <h3>セグメンテーション結果</h3>
+                <img id="outputImage" src="" alt="出力画像" style="display: none;">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const loading = document.getElementById('loading');
+        const inputImage = document.getElementById('inputImage');
+        const outputImage = document.getElementById('outputImage');
+
+        // アップロードエリアをクリック -> ファイル選択
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // ドラッグ&ドロップのイベント設定
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#666';
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.style.borderColor = '#ccc';
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#ccc';
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                processImage(file);
+            }
+        });
+
+        // ファイル選択時
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                processImage(file);
+            }
+        });
+
+        // 画像をサーバーへ送信し、結果を表示する
+        function processImage(file) {
+            // 入力画像プレビュー
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                inputImage.src = e.target.result;
+                inputImage.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+
+            // フォームデータ作成
+            const formData = new FormData();
+            formData.append('image', file);
+
+            // ローディング表示
+            loading.style.display = 'block';
+            outputImage.style.display = 'none';
+
+            // 推論 API に送信
+            fetch('/predict', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                // base64 文字列を img タグへ
+                outputImage.src = `data:image/png;base64,${data.segments}`;
+                outputImage.style.display = 'block';
+            })
+
+            .catch(error => {
+                alert('エラーが発生しました: ' + error.message);
+            })
+            .finally(() => {
+                // ローディング非表示
+                loading.style.display = 'none';
+            });
+        }
+    </script>
+</body>
+</html>
